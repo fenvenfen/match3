@@ -53,14 +53,62 @@ game.state.add('play', {
             for(let y = 0; y < 7; y++){
               let randomImageNameArray = ['gem-01', 'gem-02', 'gem-03', 'gem-04', 'gem-05']
               let donut = game.add.sprite(x * 60, y*60+150, randomImageNameArray[Math.floor(Math.random() * (4 - 0 + 1)) + 0]);
+              donut.inputEnabled = true;
+              donut.events.onInputDown.add(listener, this);
               donut.scale.setTo(0.7, 0.7);
-              donut.animations.add('run');
-              donut.animations.play('run', 10, true);
               gameArray[x][y] = donut;
             }
           }
 
-          function checkGame(xInd, yInd, key){
+          let activeDonut = {};
+          function listener (donut){
+            if(!activeDonut.key){
+              console.log("ADD ACTIVE DONUT")
+              activeDonut = donut;
+            }else{
+              let activeDonutX = activeDonut.x/60;
+              let activeDonutY = (activeDonut.y - 150)/60;
+              let donutx = donut.x/60;
+              let donutY = (donut.y - 150)/60;
+
+              if((donutx-activeDonutX)*(donutx-activeDonutX) == 1 && activeDonutY == donutY || (donutY-activeDonutY)*(donutY-activeDonutY) == 1 && activeDonutX == donutx){
+                gameArray[donutx][donutY].x = activeDonutX*60
+                gameArray[donutx][donutY].y = activeDonutY*60 + 150;
+  
+                gameArray[activeDonutX][activeDonutY].x = donutx*60
+                gameArray[activeDonutX][activeDonutY].y = donutY*60 + 150;
+  
+                let temp = gameArray[donutx][donutY];
+                gameArray[donutx][donutY] = gameArray[activeDonutX][activeDonutY];
+                gameArray[activeDonutX][activeDonutY] = temp;
+  
+                console.log(donutx, activeDonutX, activeDonutY, donutY)
+  
+                let arrayToRemove = [];
+                for(let x = 0; x < gameArray.length; x++){
+                  arrayToRemove[x] = [];
+                  for (let y = 0; y < gameArray[x].length; y++){
+                    arrayToRemove[x][y] = 0;
+                  }
+                }
+                checkHor(arrayToRemove);
+                checkVer(arrayToRemove);
+                console.log(arrayToRemove)
+                let rDelete = deleteMatch(arrayToRemove);
+                if(rDelete){
+                  setTimeout(function(){
+                    console.log("WE DELETE SOME ")
+                    fillNewSprite(arrayToRemove);
+                  }, 1000)
+                }
+              }
+              console.log("DEWA")
+              activeDonut = {};
+            }
+            console.log(this, donut)
+            // donut.scale.setTo(0.90, 0.90);
+          }
+          function checkGame(){
             // let arrayToRemove = new Array(gameArray.length).fill(new Array(gameArray[0].length).fill(0));
             let arrayToRemove = [];
             for(let x = 0; x < gameArray.length; x++){
@@ -72,48 +120,66 @@ game.state.add('play', {
             checkHor(arrayToRemove);
             checkVer(arrayToRemove);
             setTimeout(function(){
-              deleteMatch(arrayToRemove);
+              let rDelete = deleteMatch(arrayToRemove);
+              console.log(rDelete)
+              setTimeout(function(){
+                if(rDelete){
+                  fillNewSprite(arrayToRemove);
+                }
+              }, 1000)
             }, 0)
 
             console.log(arrayToRemove);
           }
           function deleteMatch(arrayToRemove){
+            let weDeleteSome = false;
             for(let x = 0; x < arrayToRemove.length; x++){
               for (let y = 0; y < arrayToRemove[x].length; y++){
                   if(arrayToRemove[x][y] > 0){
                     gameArray[x][y].kill();
                     gameArray[x][y] = null;
                     arrayToRemove[x][y] = null;
+                    weDeleteSome = true;
                   }
               }
             }
-            setTimeout(function(){
-              fillNewSprite(arrayToRemove);
-            },1000)
+            return weDeleteSome;
           }
 
           
           function fillNewSprite(arrayToRemove){
-            console.log(arrayToRemove)
             for(let x = 0; x < arrayToRemove.length; x++){
+              let counterNull = 0;
               for (let y = arrayToRemove[x].length-1; y >= 0; y--){
-
-                if(arrayToRemove[x][y] == null){
-                  if(y-1 < 0 || arrayToRemove[x][y-1] != null){
-                    arrayToRemove[x][y-1] = null;
-                    gameArray[x][y-1].y = y*60+150;
-                    gameArray[x][y] = gameArray[x][y-1];
-                    console.log("ERA")
+                if(arrayToRemove[x][y] != null){
+                  for(let yReverce = arrayToRemove[x].length-1; yReverce >= y; yReverce--){
+                    if(arrayToRemove[x][yReverce] == null){
+                      arrayToRemove[x][y] = null;
+                      arrayToRemove[x][yReverce] = 0;
+                      gameArray[x][y].y = yReverce*60+150;
+                      gameArray[x][yReverce] = gameArray[x][y];
+                      yReverce = y;
+                    }
                   }
-                  // let randomImageNameArray = ['gem-01', 'gem-02', 'gem-03', 'gem-04', 'gem-05']
-                  // let donut = game.add.sprite(x * 60, y*60+150, randomImageNameArray[Math.floor(Math.random() * (4 - 0 + 1)) + 0]);
-                  // donut.scale.setTo(0.6, 0.6);
-                  // gameArray[x][y] = donut;
+                }else{
+                  counterNull += 1
                 }
               }
+              for(let emptyY = counterNull-1; emptyY >= 0; emptyY--){
+                  let randomImageNameArray = ['gem-01', 'gem-02', 'gem-03', 'gem-04', 'gem-05']
+                  let donut = game.add.sprite(x * 60, 0*60+150, randomImageNameArray[Math.floor(Math.random() * (4 - 0 + 1)) + 0]);
+                  donut.scale.setTo(0.6, 0.6);
+                  donut.inputEnabled = true;
+                  donut.events.onInputDown.add(listener, this);
+                  gameArray[x][emptyY] = donut;
+                  arrayToRemove[x][emptyY] = 0;
+                  gameArray[x][emptyY].y = emptyY*60+150;
+              }
             }
-          }
 
+            checkGame();
+            console.log(arrayToRemove, "arrayToRemove")
+          }
           function checkHor(arrayToRemove){
             let lengthY = gameArray[0].length;
             for(let y = 0; y < lengthY; y++){
